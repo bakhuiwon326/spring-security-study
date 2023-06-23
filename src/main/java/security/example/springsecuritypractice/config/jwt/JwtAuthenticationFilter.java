@@ -1,5 +1,7 @@
 package security.example.springsecuritypractice.config.jwt;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,53 +9,58 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.querydsl.QuerydslPredicateExecutor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import security.example.springsecuritypractice.config.auth.PrincipalDetails;
-import security.example.springsecuritypractice.model.User;
+import security.example.springsecuritypractice.model.Member;
 
 import java.io.IOException;
-import java.security.Principal;
+import java.util.Date;
 
 // /login 요청해서 username, password로 전송하면(post)
 // UsernamePasswordAuthenticationFilter 가 실행된다.
 // 단, formlogin이 활성화 된 상태에서. 만약 formlogin을 disable했는데 사용하고 싶다면?
 // UsernamePasswordAuthenticationFilter를 상속한 이 클래스 필터를 addFilter해준다.
+
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+    // 원래 UsernamePasswordAuthenticationFilter는 /login 호출 때 실행되는 필터임.
+    // forLogin()을 disable했기 때문에 실행안됨.
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
 
-    // /login 요청을 하면, 로그인 시도를 위해서 실행되는 함수
+    // /login 요청을 하면, 로그인 시도를 위해서 실행되는 함수 - authenticationManager에 의해 실행된다.
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
         System.out.println("JwtAuthenticationFilter: 로그인 시도중");
+
         // 1.request에 담긴 username,password를 받아서
         try {
             // json 형태로 request들어온거에서 username과 password 추출
             ObjectMapper objectMapper = new ObjectMapper();
-            User user = objectMapper.readValue(request.getInputStream(), User.class);
-            System.out.println(user);
+            Member member = objectMapper.readValue(request.getInputStream(), Member.class);
+            System.out.println("json형태로 들어온 member" + member);
 
             // user의 로그인할때 사용한 username과 password를 이용해 토큰을 하나 만든다.
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword());
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(member.getUsername(), member.getPassword());
 
+            System.out.println("authenticationToken: " + authenticationToken);
+            System.out.println("authenticationManager: " + authenticationManager);
             // principalDetailService의 loadUserByUsernam() 함수가 실행된다.
             // authentication에 사용자의 로그인 정보가 저장된다.
-            // DB에 있는 username과 password가 일치한다.
-            System.out.println("manager입니더  " + authenticationManager);
+            // DB에 있는 username과 password가 일치한다.는 의미.
             Authentication authentication = authenticationManager.authenticate(authenticationToken);
+
             // authentication객체가 session 영역에 저장되었다. => 로그인 되었다는 의미
 
             PrincipalDetails principalDetails = (PrincipalDetails) authentication.getPrincipal();
-            System.out.println("로그인 완료됨:" + principalDetails.getUser().getUsername());
+            System.out.println("로그인 완료됨:" + principalDetails.getMember().getUsername());
 
-            // jwt토큰 사용하면, 세션을 만들 이유가 딱히 없지만. 단지 권한 처리때문에 session을 사용한다.
             return authentication;
         } catch (IOException e) {
             e.printStackTrace();
@@ -75,6 +82,18 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
         System.out.println("successfulAuthentication 실행됨: 인증이 완료되었다는 뜻");
-        super.successfulAuthentication(request, response, chain, authResult);
+        PrincipalDetails principalDetails = (PrincipalDetails) authResult.getPrincipal();
+        System.out.println("successfulAuthentication에서 가져온 principal details");
+        System.out.println(principalDetails);
+        // Hash암호 방식.
+        String jwtToken = JWT.create()
+                .withSubject(principalDetails.getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + (60000*10)))
+                .withClaim("id", principalDetails.getMember().getId())
+                .withClaim("username", principalDetails.getMember().getUsername())
+                .sign(Algorithm.HMAC512("secretKey"));
+        response.addHeader("Authorization", "Bearer " + jwtToken);
+        System.out.println("토큰 발급");
+        // jwt토큰 사용하면, 세션을 만들 이유가 딱히 없지만. 단지 권한 처리때문에 session을 사용한다.
     }
 }

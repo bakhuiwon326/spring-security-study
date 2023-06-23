@@ -3,36 +3,39 @@ package security.example.springsecuritypractice.config.auth;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import security.example.springsecuritypractice.model.User;
+import security.example.springsecuritypractice.model.Member;
 
 import java.util.ArrayList;
 import java.util.Collection;
 
 @Data
 public class PrincipalDetails implements UserDetails {
-    private User user;
+    private Member member;
 
-    public PrincipalDetails(User user){
-        this.user = user;
+    public PrincipalDetails(Member member){
+        this.member = member;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Collection<GrantedAuthority> authorities = new ArrayList<>();
-        user.getRoleList().forEach((r) -> {
-           authorities.add(()->r);
+        member.getRoleList().forEach((r) -> {
+           authorities.add(()->{return r;});
         });
         return authorities;
     }
 
-    @Override
+    public Member getMember(){
+        return member;
+    }
+
     public String getPassword() {
-        return user.getPassword();
+        return member.getPassword();
     }
 
     @Override
     public String getUsername() {
-        return user.getUsername();
+        return member.getUsername();
     }
 
     @Override

@@ -1,3 +1,4 @@
+/*
 package security.example.springsecuritypractice.config;
 
 import jakarta.servlet.Filter;
@@ -24,3 +25,4 @@ public class FilterConfig {
         return bean;
     }
 }
+*/
