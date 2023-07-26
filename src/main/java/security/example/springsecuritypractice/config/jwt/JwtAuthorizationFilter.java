@@ -6,6 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,7 +23,9 @@ import java.io.IOException;
 // 권한이나 인증이 필요한 특정 주소를 요청했ㅇ르 때 위 필터를 무조건 타게 되어있다.
 // 만약 권한이 인증이 필요한 주소가 아니라면 이 필터를 안탄다.
 public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
+
     private UserRepository userRepository;
+
     public JwtAuthorizationFilter(AuthenticationManager authenticationManager, UserRepository userRepository) {
         super(authenticationManager);
         this.userRepository = userRepository;
